@@ -39,8 +39,12 @@ def open_alert(db: Session,level: str,flux: float,is_simulated: bool = False,) -
     db.commit()
     db.refresh(alert)
     return alert
-def close_active_alerts(db: Session) -> int:
-    statement = (update(models.Alert).where(models.Alert.cleared_at.is_(None)).values(cleared_at=datetime.now(timezone.utc)))
+def close_active_alerts(db: Session, is_simulated: bool | None = None) -> int:
+    """Close open alerts. is_simulated=True/False limits it to simulated/real alerts; None closes all."""
+    statement = update(models.Alert).where(models.Alert.cleared_at.is_(None))
+    if is_simulated is not None:
+        statement = statement.where(models.Alert.is_simulated == is_simulated)
+    statement = statement.values(cleared_at=datetime.now(timezone.utc))
     result = db.execute(statement)
     db.commit()
     return result.rowcount or 0

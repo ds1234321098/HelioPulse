@@ -73,6 +73,10 @@ def get_live() -> dict[str, Any] | None:
         else:
             live_reading["is_simulated"] = False
         return live_reading
+def get_latest_real() -> dict[str, Any] | None:
+    """Latest NOAA reading with no simulation overlay. Used by the poller so fake flux never becomes a real alert."""
+    with _state_lock:
+        return None if _latest_reading is None else _latest_reading.copy()
 def get_history() -> list[dict[str, Any]]:
     with _state_lock:
         return [

@@ -1,48 +1,179 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#07111f" />
-    <title>HelioPulse | Space Weather Command</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
-    <main class="shell">
-      <header class="topbar">
-        <a class="brand" href="#top" aria-label="HelioPulse home"><span class="brand-mark">✦</span><span>HELIO<span>PULSE</span></span></a>
-        <div class="connection"><span id="connection-dot" class="dot"></span><span id="connection-text">CONNECTING</span></div>
-        <button id="refresh-button" class="icon-button" title="Refresh data" aria-label="Refresh data">↻</button>
-      </header>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#07111f" />
+  <title>HelioPulse | Space Weather Command</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="shell">
 
-      <section id="top" class="hero">
-        <div><p class="eyebrow">SPACE WEATHER COMMAND CENTER</p><h1>Solar activity,<br /><em>made actionable.</em></h1><p class="subhead">Real-time NOAA proton flux monitoring and satellite risk assessment.</p></div>
-        <div id="clock" class="clock" aria-label="UTC time"></div>
-      </section>
+    <!-- ===== Top bar ===== -->
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="HelioPulse home">HELIO<span>PULSE</span></a>
+      <div class="connection" role="status">
+        <span id="connection-dot" class="dot"></span>
+        <span id="connection-text">CONNECTING</span>
+      </div>
+      <button id="refresh-button" class="icon-button" title="Refresh now" aria-label="Refresh data">↻</button>
+    </header>
 
-      <section class="status-strip" aria-label="Current solar weather status">
-        <div class="status-level"><span class="eyebrow">CURRENT STORM LEVEL</span><strong id="storm-level">--</strong><span id="risk-status" class="pill neutral">AWAITING DATA</span></div>
-        <div class="metric"><span>PROTON FLUX</span><strong id="live-flux">--</strong><small>pfu · ≥10 MeV</small></div>
-        <div class="metric"><span>LAST OBSERVATION</span><strong id="last-observed">--</strong><small id="source-satellite">NOAA GOES</small></div>
-        <div class="metric"><span>ACTIVE ALERTS</span><strong id="alert-count">--</strong><small>open incidents</small></div>
-      </section>
+    <!-- ===== Hero ===== -->
+    <section id="top" class="hero">
+      <div>
+        <h1>Solar activity,<br />made actionable.</h1>
+        <p class="subhead">Live NOAA proton flux and what it means for each satellite in the fleet.</p>
+      </div>
+      <div id="clock" class="clock" aria-label="Current IST time"></div>
+    </section>
 
-      <section class="grid overview-grid">
-        <article class="panel chart-panel"><div class="panel-heading"><div><p class="eyebrow">TELEMETRY</p><h2>Proton Flux History</h2></div><span id="history-count" class="muted">— readings</span></div><div id="chart-empty" class="empty-chart">Waiting for NOAA readings…</div><div id="chart-wrap" class="chart-wrap hidden"><div class="chart-axis"><span id="chart-max">—</span><span id="chart-mid">—</span><span>0</span></div><svg id="flux-chart" viewBox="0 0 800 260" preserveAspectRatio="none" role="img" aria-label="Proton flux history chart"><defs><linearGradient id="area-gradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#ffb454" stop-opacity=".42" /><stop offset="100%" stop-color="#ffb454" stop-opacity="0" /></linearGradient></defs><g class="grid-lines"><line x1="0" y1="20" x2="800" y2="20"/><line x1="0" y1="130" x2="800" y2="130"/><line x1="0" y1="240" x2="800" y2="240"/></g><path id="chart-area" /><path id="chart-line" /></svg><div class="chart-footer"><span id="chart-start">—</span><span id="chart-end">—</span></div></div></article>
-        <article class="panel alert-panel"><div class="panel-heading"><div><p class="eyebrow">INCIDENTS</p><h2>Active Alerts</h2></div><span class="live-label"><i></i> LIVE</span></div><div id="alerts-list" class="alert-list"><p class="empty-message">Loading alerts…</p></div></article>
-      </section>
+    <!-- ===== Status strip: GET /api/weather/live + GET /api/alerts ===== -->
+    <section class="status-strip" aria-label="Current solar weather status">
+      <div class="status-level">
+        <span class="label">Storm level</span>
+        <strong id="storm-level">--</strong>
+        <span id="risk-status" class="pill neutral">Awaiting data</span>
+      </div>
+      <div class="metric">
+        <span class="label">Proton flux</span>
+        <strong id="live-flux">--</strong>
+        <small>pfu, ≥10 MeV</small>
+      </div>
+      <div class="metric">
+        <span class="label">Last observation</span>
+        <strong id="last-observed">--</strong>
+        <small id="source-satellite">NOAA GOES</small>
+      </div>
+      <div class="metric">
+        <span class="label">Open alerts</span>
+        <strong id="alert-count">--</strong>
+        <small>real and simulated</small>
+      </div>
+    </section>
 
-      <section class="panel risk-panel"><div class="panel-heading"><div><p class="eyebrow">FLEET EXPOSURE</p><h2>Satellite Risk Matrix</h2></div><span id="matrix-storm-level" class="muted">—</span></div><div id="risk-matrix" class="risk-matrix"><p class="empty-message">Loading satellite assessment…</p></div></section>
+    <!-- ===== Chart + alerts ===== -->
+    <section class="grid overview-grid">
+      <article class="panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Proton flux history</h2>
+            <p class="hint">Log scale. Dashed lines mark NOAA S1–S5 thresholds.</p>
+          </div>
+          <span id="history-count" class="muted">0 readings</span>
+        </div>
+        <p id="chart-empty" class="empty-message">Waiting for NOAA readings…</p>
+        <div id="chart-wrap" class="chart-wrap hidden">
+          <div id="chart-plot" class="chart-plot">
+            <svg id="flux-chart" viewBox="0 0 800 240" preserveAspectRatio="none" role="img" aria-label="Proton flux history chart">
+              <defs>
+                <linearGradient id="area-gradient" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stop-color="#ffb454" stop-opacity=".35" />
+                  <stop offset="100%" stop-color="#ffb454" stop-opacity="0" />
+                </linearGradient>
+              </defs>
+              <g id="chart-grid"></g>
+              <path id="chart-area" />
+              <path id="chart-line" />
+            </svg>
+            <div id="chart-labels"></div>
+            <div id="chart-cursor" class="chart-cursor hidden"></div>
+            <div id="chart-tooltip" class="chart-tooltip hidden"></div>
+          </div>
+          <div class="chart-footer"><span id="chart-start">—</span><span id="chart-end">—</span></div>
+        </div>
+      </article>
 
-      <section class="grid control-grid"><article class="panel simulation-panel"><div class="panel-heading"><div><p class="eyebrow">TRAINING MODE</p><h2>Simulate Solar Flare</h2></div><span id="simulation-state" class="pill neutral">INACTIVE</span></div><p>Override the live display with a simulated proton-flux event. This does not alter NOAA data.</p><form id="simulation-form"><label for="flare-flux">SIMULATED FLUX <span>pfu</span></label><div class="field-row"><input id="flare-flux" type="number" min="0.01" max="1000000000" step="any" placeholder="e.g. 1000" required /><button class="button primary" type="submit">Activate</button></div></form><button id="clear-simulation" class="button subtle" type="button">Clear simulation</button><p id="simulation-message" class="form-message" aria-live="polite"></p></article>
-        <article class="panel safe-panel"><div class="panel-heading"><div><p class="eyebrow">SATELLITE CONTROL</p><h2>Safe Mode</h2></div></div><p>Toggle protection state for individual fleet assets.</p><div id="safe-mode-list" class="safe-mode-list"><p class="empty-message">Loading fleet…</p></div></article></section>
-      <p id="error-banner" class="error-banner hidden" role="alert"></p>
-      <footer><span>HELIOPULSE / NOAA SWPC DATA</span><span id="updated-at">Last refreshed —</span></footer>
-    </main>
-    <script src="app.js"></script>
-  </body>
+      <article class="panel">
+        <div class="panel-heading">
+          <h2>Active alerts</h2>
+          <span class="live-label"><i></i>Live</span>
+        </div>
+        <div id="alerts-list" class="alert-list"><p class="empty-message">Loading alerts…</p></div>
+      </article>
+    </section>
+
+    <!-- ===== Readings table: from GET /api/weather/history ===== -->
+    <section class="panel recent-panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Latest readings</h2>
+          <p class="hint">Read from the backend's stored history (up to 288 readings). Re-checked every 10 seconds.</p>
+        </div>
+        <div class="panel-tools">
+          <span id="recent-updated" class="muted">—</span>
+          <select id="recent-limit" aria-label="Number of readings to show">
+            <option value="5" selected>Latest 5</option>
+            <option value="25">Latest 25</option>
+            <option value="100">Latest 100</option>
+            <option value="288">All stored</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table class="recent-table">
+          <thead>
+            <tr><th>Time</th><th>Flux (pfu)</th><th>Storm level</th><th>Satellite</th></tr>
+          </thead>
+          <tbody id="recent-body">
+            <tr><td colspan="4" class="empty-cell">Loading readings…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== Risk matrix: GET /api/risk-matrix + GET /api/satellites ===== -->
+    <section class="panel risk-panel">
+      <div class="panel-heading">
+        <h2>Satellite risk matrix</h2>
+        <span id="matrix-storm-level" class="muted">—</span>
+      </div>
+      <div id="risk-matrix" class="risk-matrix"><p class="empty-message">Loading satellite assessment…</p></div>
+    </section>
+
+    <!-- ===== Controls ===== -->
+    <section class="grid control-grid">
+      <article class="panel">
+        <div class="panel-heading">
+          <h2>Simulate solar flare</h2>
+          <span id="simulation-state" class="pill neutral">Inactive</span>
+        </div>
+        <p class="hint">Overrides the live display with a simulated flux. Real NOAA data is not changed.</p>
+
+        <div class="presets" role="group" aria-label="Flux presets">
+          <button class="button chip" type="button" data-flux="10">S1 · 10</button>
+          <button class="button chip" type="button" data-flux="100">S2 · 100</button>
+          <button class="button chip" type="button" data-flux="1000">S3 · 1,000</button>
+          <button class="button chip" type="button" data-flux="10000">S4 · 10,000</button>
+          <button class="button chip" type="button" data-flux="100000">S5 · 100,000</button>
+        </div>
+
+        <form id="simulation-form">
+          <label for="flare-flux">Simulated flux (pfu)</label>
+          <div class="field-row">
+            <input id="flare-flux" type="number" min="0.01" max="1000000000" step="any" placeholder="e.g. 1000" required />
+            <button class="button primary" type="submit">Start simulation</button>
+          </div>
+        </form>
+        <button id="clear-simulation" class="button subtle" type="button">Clear simulation</button>
+        <p id="simulation-message" class="form-message" aria-live="polite"></p>
+      </article>
+
+      <article class="panel">
+        <div class="panel-heading"><h2>Safe mode</h2></div>
+        <p class="hint">Put individual satellites into protective safe mode.</p>
+        <div id="safe-mode-list" class="safe-mode-list"><p class="empty-message">Loading fleet…</p></div>
+      </article>
+    </section>
+
+    <p id="error-banner" class="error-banner hidden" role="alert"></p>
+    <footer><span>HelioPulse · data from NOAA SWPC</span><span id="updated-at">Not refreshed yet</span></footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
 </html>

@@ -9,6 +9,7 @@ from typing import Any
 import requests
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -39,7 +40,7 @@ def poll_noaa_once() -> None:
         readings = noaa.fetch()
         state.update(readings)
         crud.save_readings(db,readings,)
-        live_reading = state.get_live()
+        live_reading = state.get_latest_real()  # real data only, never the simulated overlay
         if live_reading is None:
             logger.warning("NOAA returned readings, but no live reading is available.")
             return
@@ -60,7 +61,7 @@ def poll_noaa_once() -> None:
         current_level_number = int(storm_level[1])
         if current_level_number > 0:
             if current_level_number != previous_level_number:
-                crud.close_active_alerts(db)
+                crud.close_active_alerts(db, is_simulated=False)
                 crud.open_alert(
                     db,
                     level=storm_level,
@@ -73,7 +74,7 @@ def poll_noaa_once() -> None:
                     flux,
                 )
         elif active_real_alerts:
-            crud.close_active_alerts(db)
+            crud.close_active_alerts(db, is_simulated=False)
             logger.info("Cleared active real-data alerts because flux returned to S0.")
         logger.info("NOAA polling completed. Flux: %.3f pfu; storm level: %s.",flux,storm_level,)
     except (requests.RequestException, ValueError) as exc:
@@ -172,7 +173,11 @@ app.add_middleware(
     allow_origins=[
         FRONTEND_ORIGIN,
         "http://127.0.0.1:5173",
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
     ],
+    # Development convenience: any port on localhost / 127.0.0.1. Remove for production.
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -291,6 +296,7 @@ def simulate_flare(
     storm_level = risk.get_storm_level(
         request.flux
     )
+    crud.close_active_alerts(db, is_simulated=True)  # replace, don't stack, simulated alerts
     simulated_alert = None
     if storm_level != "S0":
         simulated_alert = crud.open_alert(
@@ -315,11 +321,7 @@ def simulate_flare(
 @app.post("/api/simulate/flare/clear")
 def clear_simulated_flare(db: Session = Depends(get_db),) -> dict[str, str]:
     state.clear_flare()
-    active_alerts = crud.get_active_alerts(db)
-    for alert in active_alerts:
-        if alert.is_simulated:
-            alert.cleared_at = datetime.now(timezone.utc)
-    db.commit()
+    crud.close_active_alerts(db, is_simulated=True)
     return {
         "message": "Simulated flare cleared.",
     }
@@ -353,3 +355,9 @@ def get_satellites(db: Session = Depends(get_db),) -> dict[str, Any]:
             for satellite in satellites
         ],
     }
+
+# Serve the dashboard from the same origin as the API (no CORS involved).
+# Expects the folders backend/ and frontend/ to sit side by side.
+FRONTEND_DIRECTORY = BACKEND_DIRECTORY.parent / "frontend"
+if FRONTEND_DIRECTORY.is_dir():
+    app.mount("/dashboard", StaticFiles(directory=FRONTEND_DIRECTORY, html=True), name="frontend")
